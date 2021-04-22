@@ -1,0 +1,159 @@
+// Historical land cover classification using Machine Learning: SVM
+
+//// Loading Landsat 8 collection
+var l8 = ee.ImageCollection('LANDSAT/LC08/C01/T1');
+
+var image = ee.Algorithms.Landsat.simpleComposite({
+  collection: l8.filterDate('2019-11-16', '2019-11-30'),
+  asFloat: true
+});
+
+// Features/bands used for prediction.
+var bands = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'B11'];
+
+
+// Labeling training data
+var polygons = ee.FeatureCollection([
+  ee.Feature(geometry2, {'class': 0}), // bare land
+  ee.Feature(geometry3, {'class': 1}), // vegetation
+  ee.Feature(geometry4, {'class': 3}), // cloud
+  ee.Feature(geometry5, {'class': 4}), // shadow
+  ee.Feature(geometry6, {'class': 2}), // small vegetation
+  ee.Feature(geometry7, {'class': 5}), // water
+]);
+
+// Extract Digital Numbers of pixels in training polygons
+var training = image.sampleRegions({
+  // Get the training polygons
+  collection: polygons,
+  // Set the properties name
+  properties: ['class'],
+  // Set the spatial resolution of the images
+  scale: 30
+});
+
+// Build SVM classifier
+var classifier = ee.Classifier.libsvm({
+  kernelType: 'RBF',
+  gamma: 0.5,
+  cost: 10
+});
+
+// Train the classifier
+var trained = classifier.train(training, 'class', bands);
+
+
+// List the years, months, and date
+var tahun = [2014, 2015, 2016, 2017, 2018, 2019, 2020];
+var bulan = [1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12];
+var tgl1 = [1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,];
+var tgl2 = [15,31,15,28,15,31,15,30,15,31,15,30,15,31,15,31,15,30,15,31,15,30,15,31];
+
+
+var i;
+var j;
+
+for (i = 0; i<tahun.length;i++){
+  for(j = 0; j<bulan.length;j++){
+    var composite = ee.ImageCollection('LANDSAT/LC08/C01/T1_TOA')
+    .filterDate( tahun[i] + "-" + bulan[j]  + "-" + tgl1[j], tahun[i] + "-" + bulan[j] + "-" + tgl2[j])
+    .median();
+    
+    var clipped = composite.clip(geometryp);
+    
+    // Classify the satellite image
+    var classified = clipped.classify(trained);
+
+    // clip classified
+    var clipped3 = classified.clip(geometryp);
+    
+    // Show the coposite image 654 and the classification result
+    Map.addLayer(clipped , {bands: ['B6', 'B5', 'B4'], max: 0.7}, "date " + tahun[i] + "-" + bulan[j]  + "-" + tgl1[j], false );
+    Map.addLayer(clipped3,
+             {min: 0, max: 5, palette: [ 'brown', 'green', 'yellow', 'white', 'black', 'blue'  ]},
+             'LC_classification'+ tahun[i] + "-" + bulan[j]  + "-" + tgl1[j], false);
+  }
+}
+
+// Set map center
+Map.setCenter(112.3626, -3.0089, 8);
+
+// Display layers
+Map.addLayer(geometryp, {}, 'Study Area', false);
+Map.addLayer(polygons, {}, 'training polygons', false);
+
+// ####### for CART
+// Historical land cover classification using Machine Learning CART
+
+// Loading Landsat 8 collection
+var l8 = ee.ImageCollection('LANDSAT/LC08/C01/T1');
+
+var image = ee.Algorithms.Landsat.simpleComposite({
+  collection: l8.filterDate('2019-11-16', '2019-11-30'),
+  asFloat: true
+});
+
+// Features/bands used for prediction.
+var bands = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'B11'];
+
+
+// Labeling training data
+var polygons = ee.FeatureCollection([
+  ee.Feature(geometry2, {'class': 0}), // bare land
+  ee.Feature(geometry3, {'class': 1}), // vegetation
+  ee.Feature(geometry4, {'class': 3}), // cloud
+  ee.Feature(geometry5, {'class': 4}), // shadow
+  ee.Feature(geometry6, {'class': 2}), // small vegetation
+  ee.Feature(geometry7, {'class': 5}), // water
+]);
+
+// Extract Digital Numbers of pixels in training polygons
+var training = image.sampleRegions({
+  // Get the training polygons
+  collection: polygons,
+  // Set the properties name
+  properties: ['class'],
+  // Set the spatial resolution of the images
+  scale: 30
+});
+
+// Build smileCART classifier
+var trained = ee.Classifier.smileCart().train(training, 'class', bands);
+
+// List the years, months, and date
+var tahun = [2014,2015,2016,2017,2018,2019,2020];
+var bulan = [1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12];
+var tgl1 = [1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,];
+var tgl2 = [15,31,15,28,15,31,15,30,15,31,15,30,15,31,15,31,15,30,15,31,15,30,15,31];
+
+var i;
+var j;
+
+for (i = 0; i<tahun.length;i++){
+  for(j = 0; j<bulan.length;j++){
+    var composite = ee.ImageCollection('LANDSAT/LC08/C01/T1_TOA')
+    .filterDate( tahun[i] + "-" + bulan[j]  + "-" + tgl1[j], tahun[i] + "-" + bulan[j] + "-" + tgl2[j])
+    .median();
+    
+    var clipped = composite.clip(geometryp);
+    
+    // Classify the satellite image
+    var classified = clipped.select(bands).classify(trained);
+
+    // clip classified
+    var clipped3 = classified.clip(geometryp);
+    
+    // Show the coposite image 654 and the classification result
+    Map.addLayer(clipped , {bands: ['B6', 'B5', 'B4'], max: 0.7}, "date " + tahun[i] + "-" + bulan[j]  + "-" + tgl1[j], false );
+    Map.addLayer(clipped3,
+             {min: 0, max: 5, palette: [ 'brown', 'green', 'yellow', 'white', 'black', 'blue'  ]},
+             'Classification_cart'+ tahun[i] + "-" + bulan[j]  + "-" + tgl1[j], false);
+  }
+}
+
+// Set map center
+Map.setCenter(112.3626, -3.0089, 8);
+
+// Display layers
+Map.addLayer(geometryp, {}, 'Study Area', false);
+Map.addLayer(polygons, {}, 'training polygons', false);
